@@ -8,7 +8,7 @@ android {
     defaultConfig {
         compileSdk 34
         targetSdk 34
-        applicationId "com.meshcentral.agent2-ttm"
+        applicationId "com.meshcentral.agent2ttm"
         minSdk 23
         versionCode 28
         versionName "1.0.21"
@@ -49,7 +49,7 @@ android {
         buildConfig true // This enables BuildConfig generation
     }
 
-    namespace 'com.meshcentral.agent'
+    namespace 'com.meshcentral.agent2ttm'
 }
 
 dependencies {

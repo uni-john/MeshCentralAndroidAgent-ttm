@@ -58,8 +58,8 @@ import kotlin.math.absoluteValue
 // You can hardcode a server connection string into this application by setting this string.
 // Make sure to replace all $ with \$ if your link string contains the $ character
 // Once set, the resulting APK will be hard coded and users can't unset this value.
-val hardCodedServerLink : String? = null
-//val hardCodedServerLink : String? = "mc://central.mesh.meshcentral.com,2ZNi1e2Lrqi\$nnQ7NLJCJWNwxGD9ZstiNzxs\$LIE1tcHQD45bPDvbcKzpC9zUTX9,7b4b43cdad850135f36ab31124b52e47c167fba055ce800267a4dc89fe0e581c"
+//val hardCodedServerLink : String? = null
+val hardCodedServerLink : String? = "mc://meshcentral.unison.com.au,DddCRwc3Mkj4UB1RE40o3lzUI7Q1KjntTkm\$WyedqioYhdf0Xz0nGA3tDXRwPLca,6cHe4v76VQy3mC@0FtKQC5QSCUxT0LPh\$Qf9\$uTdtSten\$uZT26F5WbqzDLHB1Yg"
 
 // User interface values
 var g_mainActivity : MainActivity? = null
