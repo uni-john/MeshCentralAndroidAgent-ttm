@@ -1,4 +1,4 @@
-package com.meshcentral.agent
+package com.meshcentral.agent2ttm
 
 import android.annotation.SuppressLint
 import android.app.Activity

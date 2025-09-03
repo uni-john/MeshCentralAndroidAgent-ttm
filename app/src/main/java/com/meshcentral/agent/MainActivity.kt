@@ -1,4 +1,4 @@
-package com.meshcentral.agent
+package com.meshcentral.agent2ttm
 
 //import com.google.firebase.iid.FirebaseInstanceId
 import android.Manifest
@@ -300,7 +300,7 @@ class MainActivity : AppCompatActivity() {
 
         if (requestCode == MainActivity.Companion.REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                startService(com.meshcentral.agent.ScreenCaptureService.getStartIntent(this, resultCode, data))
+                startService(com.meshcentral.agent2ttm.ScreenCaptureService.getStartIntent(this, resultCode, data))
                 if (meshAgent?.tunnels?.getOrNull(0) != null) {
                     val json = JSONObject()
                     json.put("type", "console")
@@ -605,7 +605,7 @@ class MainActivity : AppCompatActivity() {
             notificationChannel.lightColor = Color.BLUE
             notificationChannel.enableVibration(true)
             notificationManager.createNotificationChannel(notificationChannel)
-            builder = Notification.Builder(this, getString(com.meshcentral.agent.R.string.default_notification_channel_id))
+            builder = Notification.Builder(this, getString(com.meshcentral.agent2ttm.R.string.default_notification_channel_id))
                 .setSmallIcon(R.drawable.ic_message)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -674,7 +674,7 @@ class MainActivity : AppCompatActivity() {
     // Stop screen sharing
     fun stopProjection() {
         if (g_ScreenCaptureService == null) return
-        startService(com.meshcentral.agent.ScreenCaptureService.getStopIntent(this))
+        startService(com.meshcentral.agent2ttm.ScreenCaptureService.getStopIntent(this))
     }
 
     fun settingsChanged() {

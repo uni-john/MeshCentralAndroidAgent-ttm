@@ -1,4 +1,4 @@
-package com.meshcentral.agent
+package com.meshcentral.agent2ttm
 import android.R
 import android.annotation.TargetApi
 import android.app.Notification
@@ -11,8 +11,8 @@ import androidx.core.util.Pair
 
 object NotificationUtils {
     const val NOTIFICATION_ID = 1337
-    private const val NOTIFICATION_CHANNEL_ID = "com.meshcentral.agent.app"
-    private const val NOTIFICATION_CHANNEL_NAME = "com.meshcentral.agent.app"
+    private const val NOTIFICATION_CHANNEL_ID = "com.meshcentral.agent2ttm.app"
+    private const val NOTIFICATION_CHANNEL_NAME = "com.meshcentral.agent2ttm.app"
     fun getNotification(context: Context): Pair<Int, Notification> {
         NotificationUtils.createNotificationChannel(context)
         val notification: Notification = NotificationUtils.createNotification(context)
@@ -37,9 +37,9 @@ object NotificationUtils {
 
     private fun createNotification(context: Context): Notification {
         val builder = NotificationCompat.Builder(context, NotificationUtils.NOTIFICATION_CHANNEL_ID)
-        builder.setSmallIcon(com.meshcentral.agent.R.drawable.ic_camera)
-        builder.setContentTitle(context.getString(com.meshcentral.agent.R.string.meshcentral))
-        builder.setContentText(context.getString(com.meshcentral.agent.R.string.displaysharing))
+        builder.setSmallIcon(com.meshcentral.agent2ttm.R.drawable.ic_camera)
+        builder.setContentTitle(context.getString(com.meshcentral.agent2ttm.R.string.meshcentral))
+        builder.setContentText(context.getString(com.meshcentral.agent2ttm.R.string.displaysharing))
         builder.setOngoing(true)
         builder.setCategory(Notification.CATEGORY_SERVICE)
         builder.priority = Notification.PRIORITY_LOW

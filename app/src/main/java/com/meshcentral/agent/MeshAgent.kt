@@ -1,4 +1,4 @@
-package com.meshcentral.agent
+package com.meshcentral.agent2ttm
 
 import android.content.Context
 import android.content.Intent
@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.*
 import android.provider.Settings
 import android.util.Base64
+import com.meshcentral.agent2ttm.BuildConfig
 import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -26,6 +27,7 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
 import java.util.concurrent.TimeUnit
+import java.util.Locale
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
@@ -634,7 +636,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                 var x = JSONObject()
                 x.put("address", j.address.hostAddress)
                 if (n.hardwareAddress != null) {
-                    var mac = n.hardwareAddress.toHex().toUpperCase()
+                    var mac = n.hardwareAddress.toHex().uppercase(Locale.ROOT)
                     x.put("mac", mac.substring(0, 2) + ":" + mac.substring(2, 4) + ":" + mac.substring(4, 6) + ":" + mac.substring(6, 8) + ":" + mac.substring(8, 10) + ":" + mac.substring(10, 12))
                 }
                 if (n.isUp) {

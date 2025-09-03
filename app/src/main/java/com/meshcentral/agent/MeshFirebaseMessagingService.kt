@@ -1,4 +1,4 @@
-package com.meshcentral.agent
+package com.meshcentral.agent2ttm
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -15,6 +15,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.NetworkInterface
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.Locale
 import kotlin.concurrent.thread
 
 
@@ -238,7 +239,7 @@ class MeshFirebaseMessagingService : FirebaseMessagingService() {
                 var s = JSONArray()
                 var count = 0
                 for (j in n.interfaceAddresses) {
-                    var mac = n.hardwareAddress.toHex().toUpperCase()
+                    var mac = n.hardwareAddress.toHex().uppercase(Locale.ROOT)
                     var mac2 = mac.substring(0,2) + ":" + mac.substring(2,4) + ":" + mac.substring(4,6) + ":" + mac.substring(6,8) + ":" + mac.substring(8,10) + ":" + mac.substring(10, 12)
                     var x = JSONObject()
                     x.put("address", j.address.hostAddress)
