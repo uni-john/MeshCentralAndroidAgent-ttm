@@ -9,3 +9,9 @@ For more information, [visit MeshCentral.com](https://www.meshcentral.com).
 [Reddit](https://www.reddit.com/r/MeshCentral/)  
 [Twitter](https://twitter.com/MeshCentral)  
 [BlogSpot](https://meshcentral2.blogspot.com/)
+
+--
+
+This project has been updated to use more modern Gradel and SDK for more modern phones.
+It also hardcodes in the server connection URL for TTM.
+This package is signed for Managed Google Play Store deployments.

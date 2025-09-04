@@ -5,21 +5,21 @@ plugins {
 }
 
 android {
-    namespace 'com.meshcentral.agent2ttm'
+    namespace = 'au.com.unison.meshagent.ttm'
+    compileSdk = 34
 
     defaultConfig {
-        compileSdk 34
-        targetSdk 34
-        applicationId "com.meshcentral.agent2ttm"
-        minSdk 23
-        versionCode 28
-        versionName "1.0.21"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        targetSdk = 34
+        applicationId = "au.com.unison.meshagent.ttm"
+        minSdk = 23
+        versionCode = 4
+        versionName = "1.0.21.4"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         debug {
-            debuggable true
+            debuggable = true
         }
         release {
             // Enables code shrinking, obfuscation, and optimization for only
@@ -34,61 +34,54 @@ android {
             // the Android Gradle plugin. To learn more, go to the section about
             // R8 configuration files.
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
 
             //debuggable true
         }
     }
+
+    buildFeatures {
+        buildConfig = true
+    }    
+    
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
         jvmTarget = '1.8'
     }
 
-    buildFeatures {
-        buildConfig true
+    kotlin {
+        //jvmToolchain(8) // Specify the JDK version (e.g., 8 for Java 1.8)
     }
 }
 
 dependencies {
     //noinspection GradleDependency
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    //implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.core:core-ktx:1.13.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
     //implementation 'androidx.appcompat:appcompat:1.2.0'
-    //implementation 'com.google.android.material:material:1.11.0'
     implementation 'com.google.android.material:material:1.12.0'
-    //implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    //implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.9.3'
-    //implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
     implementation 'androidx.navigation:navigation-ui-ktx:2.9.3'
-    // implementation 'com.budiyev.android:code-scanner:2.1.0'
-    implementation 'com.github.yuriy-budiyev:code-scanner:2.3.0'
-    //implementation 'com.karumi:dexter:6.2.2'
+    implementation 'com.github.yuriy-budiyev:code-scanner:2.3.1'
     implementation 'com.karumi:dexter:6.2.3'
-    //implementation 'com.squareup.okhttp3:okhttp:4.9.0'
     implementation 'com.squareup.okhttp3:okhttp:5.1.0'
     implementation 'com.madgag.spongycastle:bcpkix-jdk15on:1.58.0.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    //implementation 'com.google.firebase:firebase-messaging:23.4.1'
     implementation 'com.google.firebase:firebase-messaging:25.0.0'
     implementation 'com.google.firebase:firebase-core:21.1.1'
-    //implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.9.3'
-    //implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3'
-    //implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    //implementation 'com.google.firebase:firebase-installations-ktx:17.2.0'
     implementation 'com.google.firebase:firebase-installations-ktx:18.0.0'
     //implementation 'androidx.work:work-runtime-ktx:2.9.0'
     //implementation 'org.webrtc:google-webrtc:1.0.32006'
     //testImplementation 'junit:junit:4.13.1'
     //androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     //androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+    implementation "androidx.activity:activity-ktx:1.9.1"
 }

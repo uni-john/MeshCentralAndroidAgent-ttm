@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:79377772889:android:74f2dcefa37e87b8fb1c48",
         "android_client_info": {
-          "package_name": "com.meshcentral.agent2ttm"
+          "package_name": "au.com.unison.meshagent.ttm"
         }
       },
       "oauth_client": [

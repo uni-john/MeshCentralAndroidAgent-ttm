@@ -1,7 +1,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.meshcentral.agent.MainActivity" >
+    tools:context="au.com.unison.meshagent.ttm.MainActivity" >
     <item
         android:id="@+id/action_setup_server"
         android:orderInCategory="100"

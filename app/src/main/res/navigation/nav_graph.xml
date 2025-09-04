@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/FirstFragment"
-        android:name="com.meshcentral.agent2ttm.MainFragment"
+        android:name="au.com.unison.meshagent.ttm.MainFragment"
         android:label="Home"
         tools:layout="@layout/main_fragment" >
 
@@ -26,7 +26,7 @@
     </fragment>
     <fragment
         android:id="@+id/SecondFragment"
-        android:name="com.meshcentral.agent2ttm.ScannerFragment"
+        android:name="au.com.unison.meshagent.ttm.ScannerFragment"
         android:label="@string/second_fragment_label"
         tools:layout="@layout/scanner_fragment" >
 
@@ -36,7 +36,7 @@
     </fragment>
     <fragment
         android:id="@+id/webViewFragment"
-        android:name="com.meshcentral.agent2ttm.WebViewFragment"
+        android:name="au.com.unison.meshagent.ttm.WebViewFragment"
         android:label="webview_fragment"
         tools:layout="@layout/webview_fragment" >
         <action
@@ -45,7 +45,7 @@
     </fragment>
     <fragment
         android:id="@+id/authFragment"
-        android:name="com.meshcentral.agent2ttm.AuthFragment"
+        android:name="au.com.unison.meshagent.ttm.AuthFragment"
         android:label="fragment_auth"
         tools:layout="@layout/fragment_auth" >
         <action
@@ -54,8 +54,8 @@
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.meshcentral.agent2ttm.SettingsFragment"
-        android:label="com.meshcentral.agent2ttm.SettingsFragment" >
+        android:name="au.com.unison.meshagent.ttm.SettingsFragment"
+        android:label="au.com.unison.meshagent.ttm.SettingsFragment" >
         <action
             android:id="@+id/action_settingsFragment_to_FirstFragment"
             app:destination="@id/FirstFragment" />
