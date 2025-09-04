@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.*
 import android.provider.Settings
 import android.util.Base64
+import android.util.Log
 import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -27,12 +28,14 @@ import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPublicKey
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import kotlin.concurrent.thread
 import kotlin.random.Random
+import androidx.core.net.toUri
+import androidx.core.graphics.createBitmap
+
 //import au.com.unison.meshagent.ttm.BuildConfig
 
 
@@ -45,11 +48,10 @@ class MeshUserInfo(useridParam: String, val realname: String?, val image: Bitmap
     }
 }
 
-class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId: String) : WebSocketListener() {
-    val parent : MainActivity = parent
-    val host : String = host
+class MeshAgent(val parent: MainActivity, val host: String, certHash: String,
+                val devGroupId: String
+) : WebSocketListener() {
     val serverCertHash: String = certHash
-    val devGroupId: String = devGroupId
     var state : Int = 0 // 0 = Disconnected, 1 = Connecting, 2 = Authenticating, 3 = Connected
     var nonce : ByteArray? = null
     var serverNonce: ByteArray? = null
@@ -124,7 +126,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.MINUTES)
             .writeTimeout(60, TimeUnit.MINUTES)
-            .hostnameVerifier(hostnameVerifier = HostnameVerifier { _, _ -> true })
+            .hostnameVerifier(hostnameVerifier = { _, _ -> true })
             .sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
             .build()
     }
@@ -143,16 +145,22 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
         if (_webSocket != null) {
             try {
                 _webSocket?.close(NORMAL_CLOSURE_STATUS, null)
+            } catch (closeException: Exception) { // Renamed and will be used
+                println("MeshAgent: Exception while closing WebSocket: ${closeException.message}")
+                // android.util.Log.w("MeshAgent", "Exception while closing WebSocket", closeException)
+            } finally {
+                // Ensure _webSocket is always nulled out, even if close() throws an exception
                 _webSocket = null
-            } catch (ex: Exception) { }
+            }
         }
+
         // Clear the connection timer
         if (connectionTimer != null) {
             connectionTimer?.cancel()
             connectionTimer = null
         }
         // Clear all relay tunnels, create a mutable list since the list may change when calling Stop()
-        var tunnelsClone : MutableList<MeshTunnel> = tunnels.toMutableList()
+        val tunnelsClone : MutableList<MeshTunnel> = tunnels.toMutableList()
         for (t in tunnelsClone) { t.Stop() }
         tunnels.clear()
         // Update the state to disconnected
@@ -173,11 +181,11 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
         if (currentServerTlsCertHash != null && currentNonce != null) {
             // Start authenticate the mesh agent by sending a auth nonce & server TLS cert hash.
             // Send 384 bits SHA384 hash of TLS cert public key + 384 bits nonce
-            var header = ByteArray(2)
+            val header = ByteArray(2)
             header[1] = 1
             webSocket.send(
                 header.plus(serverTlsCertHash!!).plus(nonce!!).toByteString()
-            ); // Command 1, hash + nonce
+            ) // Command 1, hash + nonce
         } else {
             // Handle the error: serverTlsCertHash or nonce is null.
             // This indicates a problem with the SSL handshake or internal logic.
@@ -194,7 +202,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
     override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
         try {
             //println("onBinaryMessage: ${msg.size}, ${msg.toByteArray().toHex()}")
-            if (bytes.size < 2) return;
+            if (bytes.size < 2) return
             if ((connectionState == 3) && (bytes[0].toInt() == 123)) { // Use 'bytes'                // If we are authenticated, process JSON data
                 // If we are authenticated, process JSON data
                 processAgentData(String(bytes.toByteArray(), Charsets.UTF_8)) // Use 'bytes'
@@ -206,7 +214,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             when (cmd) {
                 1 -> {
                     // Server authentication request
-                    if (bytes.size != 98) return; // Use 'bytes'
+                    if (bytes.size != 98) return // Use 'bytes'
                     val serverCertHash = bytes.substring(2, 50).toByteArray() // Use 'bytes'
                     if (!serverCertHash.contentEquals(serverTlsCertHash!!)) {
                         println("Server Hash Mismatch, given=${serverCertHash.toHex()}, computed=${serverTlsCertHash?.toHex()}")
@@ -264,16 +272,16 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                     connectionState = connectionState or 1
 
                     //println("Host: ${android.os.Build.HOST}")
-                    val agentid = 14;           // This of agent (14, Android in this case)
+                    val agentid = 14           // This of agent (14, Android in this case)
                     val agentver = 0            // Agent version (TODO)
-                    val platfromType = 3;       // This is the icon: 1 = Desktop, 2 = Laptop, 3 = Mobile, 4 = Server, 5 = Disk, 6 = Router
-                    val capabilities = 12;      // Capabilities of the agent (bitmask): 1 = Desktop, 2 = Terminal, 4 = Files, 8 = Console, 16 = JavaScript
-                    var deviceName: String? = null;
+                    val platfromType = 3       // This is the icon: 1 = Desktop, 2 = Laptop, 3 = Mobile, 4 = Server, 5 = Disk, 6 = Router
+                    val capabilities = 12      // Capabilities of the agent (bitmask): 1 = Desktop, 2 = Terminal, 4 = Files, 8 = Console, 16 = JavaScript
+                    var deviceName: String? = null
                     if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S) {
-                       deviceName = Settings.Secure.getString(parent.contentResolver, "bluetooth_name");
+                       deviceName = Settings.Secure.getString(parent.contentResolver, "bluetooth_name")
                     }
                     if (deviceName == null) {
-                        deviceName = Settings.Global.getString(parent.contentResolver, Settings.Global.DEVICE_NAME) ?: "UNKNOWN_DEVICE_NAME";
+                        deviceName = Settings.Global.getString(parent.contentResolver, Settings.Global.DEVICE_NAME) ?: "UNKNOWN_DEVICE_NAME"
                     }
                     val deviceNameUtf = deviceName.toByteArray(Charsets.UTF_8)
                     //println("DeviceName: ${deviceName}")
@@ -361,7 +369,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
         //println("JSON: $jsonStr")
         try {
             val json = JSONObject(jsonStr)
-            var action = json.getString("action")
+            val action = json.getString("action")
             //println("action: $action")
             when (action) {
                 "ping" -> {
@@ -379,12 +387,12 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                     //println("SysInfo")
                     val s = JSONObject()
                     s.put("mobile", getSysBuildInfo())
-                    var identifiers = JSONObject()
+                    val identifiers = JSONObject()
                     identifiers.put("storage_devices", getStorageInfo())
                     s.put("identifiers", identifiers)
                     val t = JSONObject()
                     t.put("hardware", s)
-                    var hash1 = MessageDigest.getInstance("SHA-384").digest(t.toString().toByteArray()).toHex()
+                    val hash1 = MessageDigest.getInstance("SHA-384").digest(t.toString().toByteArray()).toHex()
                     var hash2: String? = null
                     if (json.isNull("hash") == false) {
                         hash2 = json.getString("hash")
@@ -418,14 +426,14 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                     }
                     */
 
-                    var xurl = json.optString("url")
+                    val xurl = json.optString("url")
                     if (xurl != null) {
-                        var getintent: Intent = Intent(Intent.ACTION_VIEW, Uri.parse(xurl));
-                        parent.startActivity(getintent);
+                        val getintent = Intent(Intent.ACTION_VIEW, xurl.toUri())
+                        parent.startActivity(getintent)
                     }
                 }
                 "msg" -> {
-                    var msgtype = json.getString("type")
+                    val msgtype = json.getString("type")
                     when (msgtype) {
                         "console" -> {
                             processConsoleMessage(json.getString("value"), json.getString("sessionid"), json)
@@ -458,7 +466,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                             var url = json.getString("value")
                             if (url.startsWith("*/")) {
                                 var hostdns: String = host
-                                var i = host.indexOf('/') // If the hostname includes an extra domain, remove it.
+                                val i = host.indexOf('/') // If the hostname includes an extra domain, remove it.
                                 if (i > 0) {
                                     hostdns = host.substring(0, i); }
                                 url = "wss://$hostdns" + url.substring(1)
@@ -481,8 +489,8 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                 }
                 "getUserImage" -> {
                     // User real name and optional image
-                    var xuserid: String? = json.optString("userid")
-                    var xrealname: String? = json.optString("realname")
+                    val xuserid: String? = json.optString("userid")
+                    val xrealname: String? = json.optString("realname")
                     var ximage: String? = json.optString("image")
                     var xuserImage: Bitmap? = null
 
@@ -491,23 +499,49 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
 
                     if (ximage != null) {
                         try {
-                            val imageBytes = android.util.Base64.decode(ximage.substring(23), 0)
-                            xuserImage = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                            val imageBytes = Base64.decode(ximage.substring(23), Base64.DEFAULT) // Use Base64.DEFAULT
+                            val decodedBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 
-                            // Round the image edges
-                            val imageRounded = Bitmap.createBitmap(xuserImage.getWidth(), xuserImage.getHeight(), xuserImage.getConfig())
-                            val canvas = Canvas(imageRounded)
-                            val mpaint = Paint()
-                            mpaint.setAntiAlias(true)
-                            mpaint.setShader(BitmapShader(xuserImage, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP))
-                            canvas.drawRoundRect(RectF(0F, 0F, xuserImage.getWidth().toFloat(), xuserImage.getHeight().toFloat()), 32F, 32F, mpaint) // Round Image Corner 100 100 100 100
-                            xuserImage.recycle()
-                            xuserImage = imageRounded
-                        } catch (ex: java.lang.Exception) { }
+                            if (decodedBitmap != null) { // Check if decoding was successful
+                                // Round the image edges
+                                // Ensure decodedBitmap has a valid config, otherwise createBitmap might fail
+                                val config = decodedBitmap.config ?: Bitmap.Config.ARGB_8888
+                                val imageRounded = createBitmap(decodedBitmap.width, decodedBitmap.height, config)
+
+                                val canvas = Canvas(imageRounded)
+                                val paint = Paint().apply { // Use 'paint' instead of 'mpaint' for convention
+                                    isAntiAlias = true // Use property access
+                                    shader = BitmapShader(decodedBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+                                }
+                                canvas.drawRoundRect(
+                                    RectF(0f, 0f, decodedBitmap.width.toFloat(), decodedBitmap.height.toFloat()),
+                                    32f, // Corner radius X
+                                    32f, // Corner radius Y
+                                    paint
+                                )
+
+                                // It's good practice to recycle the original bitmap if you're replacing it
+                                xuserImage?.recycle() // Recycle previous xuserImage if it existed and is different
+                                xuserImage = imageRounded
+
+                                decodedBitmap.recycle() // Recycle the intermediate decodedBitmap
+
+                            } else {
+                                println("MeshAgent: Failed to decode user image from Base64 string.")
+                                // android.util.Log.w("MeshAgent", "Failed to decode user image from Base64 string.")
+                            }
+
+                        } catch (e: IllegalArgumentException) { // More specific exception for Base64 issues
+                            println("MeshAgent: Invalid Base64 string for user image. Error: ${e.message}")
+                            // android.util.Log.e("MeshAgent", "Invalid Base64 string for user image.", e)
+                        } catch (e: Exception) { // Catch other potential exceptions (e.g., OOM during Bitmap creation)
+                            println("MeshAgent: Error processing user image. Error: ${e.message}")
+                            // android.util.Log.e("MeshAgent", "Error processing user image.", e)
+                        }
                     }
 
                     if ((xuserid != null) && (xrealname != null)) {
-                        var xuserinfo: MeshUserInfo = MeshUserInfo(xuserid, xrealname, xuserImage)
+                        val xuserinfo = MeshUserInfo(xuserid, xrealname, xuserImage)
                         userinfo[xuserid] = xuserinfo
                     }
 
@@ -524,10 +558,23 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                     // Decode the image
                     if (ximage != null) {
                         try {
-                            val imageBytes = android.util.Base64.decode(ximage.substring(23), 0)
-                            serverImage =
-                                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                        } catch (ex: java.lang.Exception) { }
+                            val imageBytes = Base64.decode(ximage.substring(23), Base64.DEFAULT) // Use Base64.DEFAULT
+                            val decodedBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
+                            if (decodedBitmap != null) {
+                                serverImage?.recycle() // Recycle old serverImage if it exists
+                                serverImage = decodedBitmap
+                            } else {
+                                println("MeshAgent: Failed to decode server image from Base64 string.")
+                                // android.util.Log.w("MeshAgent", "Failed to decode server image from Base64 string.")
+                            }
+                        } catch (e: IllegalArgumentException) { // More specific exception for Base64 issues
+                            println("MeshAgent: Invalid Base64 string for server image. Error: ${e.message}")
+                            // android.util.Log.e("MeshAgent", "Invalid Base64 string for server image.", e)
+                        } catch (e: Exception) { // Catch other potential exceptions
+                            println("MeshAgent: Error processing server image. Error: ${e.message}")
+                            // android.util.Log.e("MeshAgent", "Error processing server image.", e)
+                        }
                     }
 
                     // Notify of user information change
@@ -597,9 +644,9 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
     }
 
     fun sendNetworkUpdate(force: Boolean) : Boolean {
-        var netinfo = getNetInfo();
+        val netinfo = getNetInfo()
         if ((force == false) && (lastNetInfo != null)) {
-            var netinfostr = netinfo.toString()
+            val netinfostr = netinfo.toString()
             if (lastNetInfo.equals(netinfostr)) return false
             lastNetInfo = netinfostr
         }
@@ -613,35 +660,35 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
     }
 
     private fun getSysBuildInfo() : JSONObject {
-        var r = JSONObject()
-        r.put("board", android.os.Build.BOARD)
-        r.put("bootloader", android.os.Build.BOOTLOADER)
-        r.put("brand", android.os.Build.BRAND)
-        r.put("device", android.os.Build.DEVICE)
-        r.put("display", android.os.Build.DISPLAY)
+        val r = JSONObject()
+        r.put("board", Build.BOARD)
+        r.put("bootloader", Build.BOOTLOADER)
+        r.put("brand", Build.BRAND)
+        r.put("device", Build.DEVICE)
+        r.put("display", Build.DISPLAY)
         //r.put("fingerprint", android.os.Build.FINGERPRINT)
-        r.put("androidapi", android.os.Build.VERSION.SDK_INT)
-        r.put("androidrelease", android.os.Build.VERSION.RELEASE)
-        r.put("host", android.os.Build.HOST)
-        r.put("id", android.os.Build.ID)
-        r.put("hardware", android.os.Build.HARDWARE)
-        r.put("model", android.os.Build.MODEL)
-        r.put("product", android.os.Build.PRODUCT)
+        r.put("androidapi", Build.VERSION.SDK_INT)
+        r.put("androidrelease", Build.VERSION.RELEASE)
+        r.put("host", Build.HOST)
+        r.put("id", Build.ID)
+        r.put("hardware", Build.HARDWARE)
+        r.put("model", Build.MODEL)
+        r.put("product", Build.PRODUCT)
         //r.put("supported_32_bit_abis", android.os.Build.SUPPORTED_32_BIT_ABIS)
         //r.put("supported_64_bit_abis", android.os.Build.SUPPORTED_64_BIT_ABIS)
         //r.put("supported_abis", android.os.Build.SUPPORTED_ABIS)
-        r.put("tags", android.os.Build.TAGS)
-        r.put("type", android.os.Build.TYPE)
-        r.put("user", android.os.Build.USER)
-        r.put("radioVersion", android.os.Build.getRadioVersion())
-        return r;
+        r.put("tags", Build.TAGS)
+        r.put("type", Build.TYPE)
+        r.put("user", Build.USER)
+        r.put("radioVersion", Build.getRadioVersion())
+        return r
     }
 
     private fun getStorageInfo() : JSONArray {
-        var r = JSONArray()
+        val r = JSONArray()
         val internalStat = StatFs(Environment.getDataDirectory().path)
         val totalSpace = internalStat.blockCountLong * internalStat.blockSizeLong
-        var onboard = JSONObject()
+        val onboard = JSONObject()
         onboard.put("Size", totalSpace)
         onboard.put("Caption", "Onboard Storage")
         onboard.put("Model", "Onboard Storage")
@@ -650,15 +697,15 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
     }
 
     private fun getNetInfo() : JSONObject {
-        var r = JSONObject()
+        val r = JSONObject()
         for (n in NetworkInterface.getNetworkInterfaces()) {
-            var s = JSONArray()
+            val s = JSONArray()
             var count = 0
             for (j in n.interfaceAddresses) {
-                var x = JSONObject()
+                val x = JSONObject()
                 x.put("address", j.address.hostAddress)
                 if (n.hardwareAddress != null) {
-                    var mac = n.hardwareAddress.toHex().uppercase(Locale.ROOT)
+                    val mac = n.hardwareAddress.toHex().uppercase(Locale.ROOT)
                     x.put("mac", mac.substring(0, 2) + ":" + mac.substring(2, 4) + ":" + mac.substring(4, 6) + ":" + mac.substring(6, 8) + ":" + mac.substring(8, 10) + ":" + mac.substring(10, 12))
                 }
                 if (n.isUp) {
@@ -666,10 +713,18 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                 } else {
                     x.put("status", "down")
                 }
-                if (j.address.hostAddress.indexOf(':') >= 0) {
+                val hostAddressString: String? = j.address?.hostAddress
+                // If hostAddressString is null, indexOf will not be called.
+                // The whole expression hostAddressString?.indexOf(':') will be null.
+                // Then handle the null case for the comparison.
+                val indexOfColon = hostAddressString?.indexOf(':')
+                if (indexOfColon != null && indexOfColon >= 0) {
                     x.put("family", "IPv6")
-                } else {
+                } else if (hostAddressString != null) { // It's not null, but no colon was found
                     x.put("family", "IPv4")
+                } else {
+                    // hostAddressString was null
+                    x.put("family", "Unknown") // Or omit, or handle as error
                 }
                 x.put("index", n.index)
                 s.put(x)
@@ -682,7 +737,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
 
     fun batteryStateChanged(intent: Intent) {
         // Get the battery status, if it did not chance, don't send anything to the server
-        var battState : JSONObject? = getSysBatteryInfo();
+        val battState : JSONObject? = getSysBatteryInfo()
         if (battState != null) {
             if ((lastBattState != null) &&
                     ((lastBattState?.getInt("level") == battState.getInt("level"))
@@ -694,41 +749,63 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
         }
     }
 
-    private fun getSysBatteryInfo() : JSONObject? {
-        try {
+    private fun getSysBatteryInfo(): JSONObject? {
+        return try {
             val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
                 parent.applicationContext.registerReceiver(null, ifilter)
             }
-            val status: Int = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-            val isCharging: Boolean = status == BatteryManager.BATTERY_STATUS_CHARGING
-                    || status == BatteryManager.BATTERY_STATUS_FULL
 
-            val batteryPct: Float? = batteryStatus?.let { intent ->
-                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-                level * 100 / scale.toFloat()
+            if (batteryStatus == null) {
+                Log.w("MeshAgent", "Failed to get battery status intent.")
+                return null // Return null early if intent is null
             }
 
-            var r = JSONObject()
+            val status: Int = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            // No need for ?: -1 for status if batteryStatus is checked for null,
+            // but keeping it doesn't harm if getIntExtra could somehow return null with a non-null intent.
+
+            val isCharging: Boolean = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+
+            val level: Int = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale: Int = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+
+            // Ensure scale is not zero to prevent division by zero, and level/scale are valid
+            val batteryPct: Float? = if (scale > 0 && level != -1) {
+                level * 100 / scale.toFloat()
+            } else {
+                null // Or handle as an error, e.g., return a specific value or log more verbosely
+            }
+
+            val r = JSONObject()
             r.put("action", "battery")
             if (isCharging) {
                 r.put("state", "ac")
             } else {
                 r.put("state", "dc")
             }
-            r.put("level", batteryPct)
-            return r;
+
+            if (batteryPct != null) {
+                r.put("level", batteryPct)
+            } else {
+                // Optionally put a null or a specific value if batteryPct couldn't be determined
+                r.put("level", JSONObject.NULL) // Explicitly put JSON null
+                Log.w("MeshAgent", "Could not determine battery percentage (level/scale invalid).")
+            }
+            r // Return the JSONObject
+        } catch (e: Exception) {
+            // Log the exception
+            Log.e("MeshAgent", "Error getting system battery info: ${e.message}", e)
+            null // Return null if any exception occurs
         }
-        catch (e: Exception) { }
-        return null
     }
 
     private fun parseArgString(s: String) : List<String> {
-        var r = ArrayList<String>()
-        var acc : String = ""
+        val r = ArrayList<String>()
+        var acc = ""
         var q = false
         for (i in 0..(s.length - 1)) {
-            var c = s[i]
+            val c = s[i]
             if ((c == ' ') && (q == false)) {
                 if (acc.length > 0) { r.add(acc); acc = ""; }
             } else {
@@ -743,15 +820,15 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
         //println("Console: $cmdLine")
 
         // Parse the incoming console command
-        var splitCmd = parseArgString(cmdLine)
-        var cmd = splitCmd[0]
+        val splitCmd = parseArgString(cmdLine)
+        val cmd = splitCmd[0]
         var r : String? = null
         if (cmd == "") return
 
         // Log the incoming console command to the server
-        var eventArgs = JSONArray()
+        val eventArgs = JSONArray()
         eventArgs.put(cmdLine)
-        logServerEventEx(17, eventArgs, "Processing console command: $cmdLine", jsoncmd);
+        logServerEventEx(17, eventArgs, "Processing console command: $cmdLine", jsoncmd)
 
         when (cmd) {
             "help" -> {
@@ -761,50 +838,50 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             "alert" -> {
                 // Display alert message
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  alert \"Message\" \"Title\"";
+                    r = "Usage:\r\n  alert \"Message\" \"Title\""
                 } else if (splitCmd.size == 2) {
                     // Event to the server
-                    var eventArgs = JSONArray()
+                    val eventArgs = JSONArray()
                     eventArgs.put("Alert")
                     eventArgs.put(splitCmd[1])
-                    logServerEventEx(18, eventArgs, "Displaying message box, title=" + splitCmd[2] + ", message=" + splitCmd[1], jsoncmd);
+                    logServerEventEx(18, eventArgs, "Displaying message box, title=" + splitCmd[2] + ", message=" + splitCmd[1], jsoncmd)
 
                     // Show the alert
                     parent.showAlertMessage("Alert", splitCmd[1])
-                    r = "Ok";
+                    r = "Ok"
                 } else if (splitCmd.size > 2) {
                     // Event to the server
-                    var eventArgs = JSONArray()
+                    val eventArgs = JSONArray()
                     eventArgs.put(splitCmd[2])
                     eventArgs.put(splitCmd[1])
-                    logServerEventEx(18, eventArgs, "Displaying message box, title=" + splitCmd[2] + ", message=" + splitCmd[1], jsoncmd);
+                    logServerEventEx(18, eventArgs, "Displaying message box, title=" + splitCmd[2] + ", message=" + splitCmd[1], jsoncmd)
 
                     // Show the alert
                     parent.showAlertMessage(splitCmd[2], splitCmd[1])
-                    r = "Ok";
+                    r = "Ok"
                 }
             }
             "toast" -> {
                 // Display toast message
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  toast \"Message\"";
+                    r = "Usage:\r\n  toast \"Message\""
                 } else if (splitCmd.size >= 2) {
                     parent.showToastMessage(splitCmd[1])
 
                     // Event to the server
-                    var eventArgs = JSONArray()
+                    val eventArgs = JSONArray()
                     eventArgs.put("None")
                     eventArgs.put(splitCmd[1])
-                    logServerEventEx(26, eventArgs, "Displaying toast message, title=None, message=${splitCmd[1]}", jsoncmd);
-                    r = "Ok";
+                    logServerEventEx(26, eventArgs, "Displaying toast message, title=None, message=${splitCmd[1]}", jsoncmd)
+                    r = "Ok"
                 }
             }
             "dial" -> {
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  dial [phonenumber]";
+                    r = "Usage:\r\n  dial [phonenumber]"
                 } else if (splitCmd.size >= 2) {
-                    var getintent: Intent = Intent(Intent.ACTION_VIEW, Uri.parse("tel:${splitCmd[1]}"));
-                    parent.startActivity(getintent);
+                    val getintent = Intent(Intent.ACTION_VIEW, "tel:${splitCmd[1]}".toUri())
+                    parent.startActivity(getintent)
                     r = "ok"
                 }
             }
@@ -822,7 +899,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             }
             "battery" -> {
                 // Battery info
-                var battState: JSONObject? = getSysBatteryInfo();
+                val battState: JSONObject? = getSysBatteryInfo()
                 if (battState == null) {
                     r = "No battery"
                 } else {
@@ -832,7 +909,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             "openbrowser" -> {
                 // Open a URL
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  openbrowser \"url\"";
+                    r = "Usage:\r\n  openbrowser \"url\""
                 } else if (splitCmd.size >= 2) {
                     if (splitCmd[1].startsWith("https://") || splitCmd[1].startsWith("http://")) {
                         if (visibleScreen == 2) {
@@ -840,8 +917,8 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                         } else {
                             // Open the URL
                             try {
-                                var getintent: Intent = Intent(Intent.ACTION_VIEW, Uri.parse(splitCmd[1]));
-                                parent.startActivity(getintent);
+                                val getintent = Intent(Intent.ACTION_VIEW, splitCmd[1].toUri())
+                                parent.startActivity(getintent)
                                 r = "Ok"
                             } catch (ex: Exception) {
                                 r = "Error opening: ${splitCmd[1]}"
@@ -855,7 +932,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             "openurl" -> {
                 // Open a URL in the agent application
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  openurl \"url\"";
+                    r = "Usage:\r\n  openurl \"url\""
                 } else if (splitCmd.size >= 2) {
                     if (splitCmd[1].startsWith("https://") || splitCmd[1].startsWith("http://")) {
                         if (visibleScreen == 2) {
@@ -863,14 +940,14 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                         } else {
                             // Open the URL
                             if (parent.openUrl(splitCmd[1])) {
-                                r = "Ok";
+                                r = "Ok"
 
                                 // Event to the server
-                                var eventArgs = JSONArray()
+                                val eventArgs = JSONArray()
                                 eventArgs.put(splitCmd[1])
-                                logServerEventEx(20, eventArgs, "Opening: ${splitCmd[1]}", jsoncmd);
+                                logServerEventEx(20, eventArgs, "Opening: ${splitCmd[1]}", jsoncmd)
                             } else {
-                                r = "Busy";
+                                r = "Busy"
                             }
                         }
                     } else {
@@ -900,7 +977,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             "serverlog" -> {
                 // Log an event to the server
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  serverlog \"event\"";
+                    r = "Usage:\r\n  serverlog \"event\""
                 } else if (splitCmd.size >= 2) {
                     logServerEvent(splitCmd[1], jsoncmd)
                     r = "ok"
@@ -927,7 +1004,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             "vibrate" -> {
                 // Vibrate the device
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  vibrate [milliseconds]";
+                    r = "Usage:\r\n  vibrate [milliseconds]"
                 } else if (splitCmd.size >= 2) {
                     var t: Long = 0
                     try {
@@ -935,23 +1012,37 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                     } catch (e: Exception) {
                     }
                     if ((t > 0) && (t <= 10000)) {
-                        val v = parent.getApplicationContext()
-                                .getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                        if (v == null) {
-                            r = "Not supported"
+                        val context = parent.applicationContext // Get context once
+                        val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            val vibratorManager =
+                                context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                            vibratorManager.defaultVibrator
                         } else {
-                            // Vibrate for 500 milliseconds
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                v.vibrate(
-                                        VibrationEffect.createOneShot(
-                                                t,
-                                                VibrationEffect.DEFAULT_AMPLITUDE
-                                        )
-                                )
-                            } else {
-                                v.vibrate(t)
+                            @Suppress("DEPRECATION")
+                            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator?
+                        }
+
+                        if (vibrator == null || !vibrator.hasVibrator()) { // Check if vibrator exists and is enabled
+                            r = "Vibrator not supported or not available"
+                        } else {
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    // Use VibrationEffect for Android Oreo (API 26) and above
+                                    val vibrationEffect = VibrationEffect.createOneShot(t, VibrationEffect.DEFAULT_AMPLITUDE)
+                                    vibrator.vibrate(vibrationEffect)
+                                } else {
+                                    // For older versions (below API 26), use the deprecated vibrate(long)
+                                    // Note: v.vibrate(t) without @Suppress will show a warning if your compileSdk is 26+
+                                    @Suppress("DEPRECATION")
+                                    vibrator.vibrate(t)
+                                }
+                                r = "ok"
+                            } catch (e: Exception) {
+                                // Catch any unexpected errors during vibration attempt
+                                r = "Error during vibration: ${e.message}"
+                                // Consider logging the exception e
+                                println("Vibration error: ${e.localizedMessage}")
                             }
-                            r = "ok"
                         }
                     } else {
                         r = "Value must be between 1 and 10000"
@@ -960,10 +1051,10 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             }
             "flash" -> {
                 if (splitCmd.size < 2) {
-                    r = "Usage:\r\n  flash [milliseconds]";
+                    r = "Usage:\r\n  flash [milliseconds]"
                 } else if (splitCmd.size >= 2) {
-                    var isFlashAvailable = parent.getApplicationContext().getPackageManager()
-                            .hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT);
+                    val isFlashAvailable = parent.getApplicationContext().getPackageManager()
+                            .hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
                     if (!isFlashAvailable) {
                         r = "Flash not available"
                     } else {
@@ -973,13 +1064,13 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
                         } catch (e: Exception) {
                         }
                         if ((t > 0) && (t <= 10000)) {
-                            var mCameraManager = parent.getApplicationContext().getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                            val mCameraManager = parent.getApplicationContext().getSystemService(Context.CAMERA_SERVICE) as CameraManager
                             try {
-                                var mCameraId = mCameraManager.getCameraIdList()[0];
-                                mCameraManager.setTorchMode(mCameraId, true);
+                                val mCameraId = mCameraManager.getCameraIdList()[0]
+                                mCameraManager.setTorchMode(mCameraId, true)
                                 thread {
                                     Thread.sleep(t)
-                                    mCameraManager.setTorchMode(mCameraId, false);
+                                    mCameraManager.setTorchMode(mCameraId, false)
                                 }
                                 r = "ok"
                             } catch (e: CameraAccessException) {
@@ -1029,7 +1120,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             if (!jsoncmd.isNull("sessionid")) { json.put("sessionid", jsoncmd.optString("sessionid")) }
             if (!jsoncmd.isNull("remoteaddr")) { json.put("remoteaddr", jsoncmd.optString("remoteaddr")) }
             if (!jsoncmd.isNull("soptions")) {
-                var soptions : JSONObject = jsoncmd.getJSONObject("soptions")
+                val soptions : JSONObject = jsoncmd.getJSONObject("soptions")
                 if (!soptions.isNull("userid")) { json.put("userid", soptions.optString("userid")) }
                 if (!soptions.isNull("sessionid")) { json.put("sessionid", soptions.optString("sessionid")) }
             }
@@ -1049,7 +1140,7 @@ class MeshAgent(parent: MainActivity, host: String, certHash: String, devGroupId
             if (!jsoncmd.isNull("sessionid")) { json.put("sessionid", jsoncmd.optString("sessionid")) }
             if (!jsoncmd.isNull("remoteaddr")) { json.put("remoteaddr", jsoncmd.optString("remoteaddr")) }
             if (!jsoncmd.isNull("soptions")) {
-                var soptions : JSONObject = jsoncmd.getJSONObject("soptions")
+                val soptions : JSONObject = jsoncmd.getJSONObject("soptions")
                 if (!soptions.isNull("userid")) { json.put("userid", soptions.optString("userid")) }
                 if (!soptions.isNull("sessionid")) { json.put("sessionid", soptions.optString("sessionid")) }
             }

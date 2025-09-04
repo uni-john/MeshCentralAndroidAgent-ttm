@@ -2,7 +2,7 @@ package au.com.unison.meshagent.ttm
 
 //import com.google.firebase.iid.FirebaseInstanceId
 import android.Manifest
-import android.app.Activity
+//import android.app.Activity
 import android.app.AlertDialog
 import android.app.Notification
 import android.app.NotificationChannel
@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
     // Register for the screen capture result
     private val screenCaptureLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
+            if (result.resultCode == RESULT_OK) {
                 val data: Intent? = result.data
                 if (data != null) {
                     // Successfully got permission and data for screen capture
@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         g_mainActivity = this
-        val sharedPreferences = getSharedPreferences("meshagent", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("meshagent", MODE_PRIVATE)
         if (hardCodedServerLink != null) {
             // Use the hard coded server link
             serverLink = hardCodedServerLink
@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar))
 
         // Setup notification manager
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         // Register to get battery events
         val intentFilter = IntentFilter()
@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity() {
         */
 
         // See if we there open by a notification with a URL
-        var intentUrl : String? = intent.getStringExtra("url")
+        val intentUrl : String? = intent.getStringExtra("url")
         //println("Main Activity Create URL: $intentUrl")
         if (intentUrl != null) {
             intent.removeExtra("url")
@@ -189,7 +189,7 @@ class MainActivity : AppCompatActivity() {
                     g_auth_url = Uri.parse(intentUrl)
                     // If not connected, connect to the server now.
                     if (meshAgent == null) {
-                        toggleAgentConnection(false);
+                        toggleAgentConnection(false)
                     } else {
                         // Switch to 2FA auth screen
                         if (mainFragment != null) {
@@ -200,8 +200,8 @@ class MainActivity : AppCompatActivity() {
                 }
             } else if (intentUrl.lowercase().startsWith("http://") || intentUrl.lowercase().startsWith("https://")) {
                 // Open an HTTP or HTTPS URL.
-                var getintent: Intent = Intent(Intent.ACTION_VIEW, Uri.parse(intentUrl));
-                startActivity(getintent);
+                var getintent = Intent(Intent.ACTION_VIEW, Uri.parse(intentUrl))
+                startActivity(getintent)
             }
         }
 
@@ -229,25 +229,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        var item1 = menu.findItem(R.id.action_setup_server);
-        item1.isVisible = (visibleScreen == 1) && (hardCodedServerLink == null);
-        item1.isEnabled = cameraPresent;
-        var item2 = menu.findItem(R.id.action_clear_server);
-        item2.isVisible = (visibleScreen == 1) && (serverLink != null) && (hardCodedServerLink == null);
-        var item3 = menu.findItem(R.id.action_close);
-        item3.isVisible = (visibleScreen != 1);
-        var item4 = menu.findItem(R.id.action_sharescreen);
+        val item1 = menu.findItem(R.id.action_setup_server)
+        item1.isVisible = (visibleScreen == 1) && (hardCodedServerLink == null)
+        item1.isEnabled = cameraPresent
+        val item2 = menu.findItem(R.id.action_clear_server)
+        item2.isVisible = (visibleScreen == 1) && (serverLink != null) && (hardCodedServerLink == null)
+        val item3 = menu.findItem(R.id.action_close)
+        item3.isVisible = (visibleScreen != 1)
+        val item4 = menu.findItem(R.id.action_sharescreen)
         item4.isVisible = false // (g_ScreenCaptureService == null) && (meshAgent != null) && (meshAgent!!.state == 3)
-        var item5 = menu.findItem(R.id.action_stopscreensharing);
+        val item5 = menu.findItem(R.id.action_stopscreensharing)
         item5.isVisible = (g_ScreenCaptureService != null)
-        var item6 = menu.findItem(R.id.action_manual_setup_server);
+        val item6 = menu.findItem(R.id.action_manual_setup_server)
         item6.isVisible = (visibleScreen == 1) && (serverLink == null) && (hardCodedServerLink == null)
-        var item7 = menu.findItem(R.id.action_testAuth);
+        val item7 = menu.findItem(R.id.action_testAuth)
         item7.isVisible = false //(visibleScreen == 1) && (serverLink != null);
-        var item8 = menu.findItem(R.id.action_settings);
-        item8.isVisible = (visibleScreen == 1);
-        var item9 = menu.findItem(R.id.action_enablepushauthentication);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+        val item8 = menu.findItem(R.id.action_settings)
+        item8.isVisible = (visibleScreen == 1)
+        val item9 = menu.findItem(R.id.action_enablepushauthentication)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             item9.isVisible = (notificationManager.areNotificationsEnabled() == false)
         } else {
             item9.isVisible = false
@@ -326,9 +326,9 @@ class MainActivity : AppCompatActivity() {
         println("onActivityResult, requestCode: $requestCode, resultCode: $resultCode, data: ${data.toString()}")
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == MainActivity.Companion.REQUEST_CODE) {
+        if (requestCode == REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                startService(au.com.unison.meshagent.ttm.ScreenCaptureService.getStartIntent(this, resultCode, data))
+                startService(ScreenCaptureService.getStartIntent(this, resultCode, data))
                 if (meshAgent?.tunnels?.getOrNull(0) != null) {
                     val json = JSONObject()
                     json.put("type", "console")
@@ -354,7 +354,7 @@ class MainActivity : AppCompatActivity() {
         for (b in pendingActivities) { if (b.id == requestCode) { pad = b } }
 
         if (pad != null) {
-            if (resultCode == Activity.RESULT_OK) {
+            if (resultCode == RESULT_OK) {
                 println("Approved: ${pad.url}, ${pad.where}, ${pad.args}")
                 pad.tunnel.deleteFileEx(pad)
             } else {
@@ -372,7 +372,7 @@ class MainActivity : AppCompatActivity() {
             meshAgent = null
         }
         serverLink = x
-        val sharedPreferences = getSharedPreferences("meshagent", Context.MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("meshagent", MODE_PRIVATE)
         sharedPreferences.edit().putString("qrmsh", x).apply()
         mainFragment?.refreshInfo()
         g_userDisconnect = false
@@ -382,7 +382,7 @@ class MainActivity : AppCompatActivity() {
     // Open a URL in the web view fragment
     fun openUrl(xpageUrl: String) : Boolean {
         if (visibleScreen == 2) return false
-        pageUrl = xpageUrl;
+        pageUrl = xpageUrl
 
         if (visibleScreen == 1) {
             mainFragment?.moveToWebPage(xpageUrl)
@@ -464,7 +464,7 @@ class MainActivity : AppCompatActivity() {
 
     fun showToastMessage(msg: String) {
         this.runOnUiThread {
-            var toast = Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG)
+            val toast = Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG)
             toast?.setGravity(Gravity.CENTER, 0, 300)
             toast?.show()
         }
@@ -472,20 +472,20 @@ class MainActivity : AppCompatActivity() {
 
     fun getServerHost() : String? {
         if (serverLink == null) return null
-        var x : List<String> = serverLink!!.split(',')
-        var serverHost = x[0]
+        val x : List<String> = serverLink!!.split(',')
+        val serverHost = x[0]
         return serverHost.substring(5)
     }
 
     fun getServerHash() : String? {
         if (serverLink == null) return null
-        var x : List<String> = serverLink!!.split(',')
+        val x : List<String> = serverLink!!.split(',')
         return x[1]
     }
 
     fun getDevGroup() : String? {
         if (serverLink == null) return null
-        var x : List<String> = serverLink!!.split(',')
+        val x : List<String> = serverLink!!.split(',')
         return x[2]
     }
 
@@ -539,7 +539,7 @@ class MainActivity : AppCompatActivity() {
 
         // Check and add ignore battery optimization permissions if necessary
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val powerManager = getSystemService(POWER_SERVICE) as PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
@@ -562,7 +562,7 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQUEST_ALL_PERMISSIONS) {
             permissions.forEachIndexed { index, permission ->
                 if (grantResults[index] == PackageManager.PERMISSION_DENIED) {
-                    // Handle each denied permission if necessary
+                    // TODO Handle each denied permission if necessary
                 }
             }
         }
@@ -572,11 +572,11 @@ class MainActivity : AppCompatActivity() {
         //println("toggleAgentConnection")
         if ((meshAgent == null) && (serverLink != null)) {
             // Create and connect the agent
-            requestAllPermissions();
+            requestAllPermissions()
             if (agentCertificate == null) {
                 val sharedPreferences = getSharedPreferences("meshagent", Context.MODE_PRIVATE)
-                var certb64 : String? = sharedPreferences?.getString("agentCert", null)
-                var keyb64 : String? = sharedPreferences?.getString("agentKey", null)
+                val certb64 : String? = sharedPreferences?.getString("agentCert", null)
+                val keyb64 : String? = sharedPreferences?.getString("agentKey", null)
                 if ((certb64 == null) || (keyb64 == null)) {
                     //println("Generating new certificates...")
 
@@ -586,7 +586,7 @@ class MainActivity : AppCompatActivity() {
                     val keypair = keyGen.generateKeyPair()
 
                     // Generate Serial Number
-                    var serial : BigInteger = BigInteger("12345678");
+                    var serial : BigInteger = BigInteger("12345678")
                     try { serial = BigInteger.valueOf(Random().nextInt().toLong().absoluteValue) } catch (ex: Exception) {}
 
                     // Create self signed certificate
@@ -669,7 +669,7 @@ class MainActivity : AppCompatActivity() {
             notificationChannel.lightColor = Color.BLUE
             notificationChannel.enableVibration(true)
             notificationManager.createNotificationChannel(notificationChannel)
-            builder = Notification.Builder(this, getString(au.com.unison.meshagent.ttm.R.string.default_notification_channel_id))
+            builder = Notification.Builder(this, getString(R.string.default_notification_channel_id))
                 .setSmallIcon(R.drawable.ic_message)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -731,14 +731,14 @@ class MainActivity : AppCompatActivity() {
     // Start screen sharing
     fun startProjection() {
         if ((g_ScreenCaptureService != null) || (meshAgent == null) || (meshAgent!!.state != 3)) return
-        val mProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val mProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         screenCaptureLauncher.launch(mProjectionManager.createScreenCaptureIntent())
     }
 
     // Stop screen sharing
     fun stopProjection() {
         if (g_ScreenCaptureService == null) return
-        startService(au.com.unison.meshagent.ttm.ScreenCaptureService.getStopIntent(this))
+        startService(ScreenCaptureService.getStopIntent(this))
     }
 
     fun settingsChanged() {
