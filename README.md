@@ -12,18 +12,28 @@ For more information, [visit MeshCentral.com](https://www.meshcentral.com).
 
 --
 
+## Credit
 Firstly, full credit to @Ylianst for the original project.
+
 https://github.com/Ylianst/MeshCentralAndroidAgent
+
 Second, further credit to @manfred-mueller for the subsequent auto-start fork.
+
 https://github.com/manfred-mueller/MeshCentralAndroidAgent
 
 
-This project was forked and updated to work with more modern android devices. 
+## Fork reasons
+This project was forked and updated to work with more modern android devices.
+
 We had issues deploying the current 1.0.21 deployed from MeshCentral directly, with only 1.0.15 package providing a working share screen. 
+
 This app currently targets SDK 34 (Android 10 and above).
+
 **NOTE: It also hardcodes in the server connection URL for TTM.** <-- details on what and how to change below
+
 This package can be signed to be deployed via .APK or .AAB for Managed Google Play Store deployments.
 
+# Useful info
 If you decide to use this, you need to know a few things:
 1. It was developed for a specific client and is HARD CODED to join our Mesh Central deployment 
 * You can adjust this in app/src/main/java/au/com/unison/meshagent/ttm/MainActivity.kt
@@ -37,10 +47,12 @@ If you decide to use this, you need to know a few things:
 
 3. Ensure when you build and deploy your app you increment you 'versionCode' and 'versionName' in app\build.gradle
 
+
 This was updated and build using Android Studio.
 It is signed and built via the Android Studio as well.
 If you needed to align, compile and sign the src without Android Studio, you MIGHT be able to make the following generalised steps work.
 
+## Manual steps to compile source that MIGHT work
 1. Compile
 apktool b MeshCentralAndroidAgent-ttm -o MeshCentralAndroidAgent-ttm-unsigned.apk
 
